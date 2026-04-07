@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 import bpy
 import bmesh
 from bpy.props import (
@@ -12,6 +13,11 @@ from . import landmark_presets
 from .landmark_defs import (
     FACIAL_LANDMARKS, BODY_LANDMARKS, FINGER_LANDMARKS,
     DEFAULT_CUSTOM_COLOR,
+)
+
+PRESET_DIR = os.path.join(
+    "C:\\Users\\USER\\Documents\\blender\\scripts",
+    "intra10_toolkit", "landmarks",
 )
 
 
@@ -66,60 +72,6 @@ class INTRA10_OT_ToggleLandmarkDraw(bpy.types.Operator):
 
     def execute(self, context):
         landmark_draw.toggle_draw()
-        return {'FINISHED'}
-
-
-class INTRA10_OT_MarkLandmark(bpy.types.Operator):
-    bl_idname = "intra10.mark_landmark"
-    bl_label = "Mark Landmark Edges"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        return context.mode == 'EDIT_MESH'
-
-    def execute(self, context):
-        scene = context.scene
-        idx = scene.intra10_landmark_active_index
-        groups = scene.intra10_landmark_groups
-
-        if idx < 0 or idx >= len(groups):
-            self.report({'WARNING'}, "Select a landmark group first")
-            return {'CANCELLED'}
-
-        group = groups[idx]
-        count = landmark_core.mark_edges(context, group.name)
-
-        if scene.intra10_landmark_auto_mirror:
-            landmark_core.auto_mirror_mark(context, group.name)
-
-        _redraw_viewports()
-        self.report({'INFO'}, f"Marked {count} edges in '{group.name}'")
-        return {'FINISHED'}
-
-
-class INTRA10_OT_ClearLandmark(bpy.types.Operator):
-    bl_idname = "intra10.clear_landmark"
-    bl_label = "Clear Landmark Edges"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        return context.mode == 'EDIT_MESH'
-
-    def execute(self, context):
-        scene = context.scene
-        idx = scene.intra10_landmark_active_index
-        groups = scene.intra10_landmark_groups
-
-        if idx < 0 or idx >= len(groups):
-            self.report({'WARNING'}, "Select a landmark group first")
-            return {'CANCELLED'}
-
-        group = groups[idx]
-        count = landmark_core.clear_edges(context, group.name)
-        _redraw_viewports()
-        self.report({'INFO'}, f"Cleared {count} edges from '{group.name}'")
         return {'FINISHED'}
 
 
@@ -316,6 +268,37 @@ class INTRA10_OT_RemoveLandmarkGroup(bpy.types.Operator):
 
         groups.remove(idx)
         scene.intra10_landmark_active_index = min(idx, len(groups) - 1)
+        _redraw_viewports()
+        return {'FINISHED'}
+
+
+class INTRA10_OT_ClearLandmarkEdges(bpy.types.Operator):
+    """Clear all edges from selected landmark group (keep group in list)"""
+    bl_idname = "intra10.clear_landmark_edges"
+    bl_label = "Clear Landmark Edges"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scene = context.scene
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            self.report({'WARNING'}, "Select a mesh object")
+            return {'CANCELLED'}
+
+        idx = scene.intra10_landmark_active_index
+        groups = scene.intra10_landmark_groups
+        if idx < 0 or idx >= len(groups):
+            self.report({'WARNING'}, "No group selected")
+            return {'CANCELLED'}
+
+        group = groups[idx]
+        if obj.name != group.obj_name:
+            self.report({'WARNING'}, "Active object doesn't match group")
+            return {'CANCELLED'}
+
+        landmark_core.remove_attribute(obj, group.name)
+        _redraw_viewports()
+        self.report({'INFO'}, f"Cleared all edges from '{group.name}'")
         return {'FINISHED'}
 
 
@@ -343,19 +326,20 @@ class INTRA10_OT_MirrorLandmarkGroup(bpy.types.Operator):
             self.report({'WARNING'}, "Mirror failed: no mirrored edges found")
             return {'CANCELLED'}
 
-        existing = None
-        for g in groups:
-            if g.name == dst_name and g.obj_name == obj.name:
-                existing = g
-                break
+        if dst_name != src_group.name:
+            existing = None
+            for g in groups:
+                if g.name == dst_name and g.obj_name == obj.name:
+                    existing = g
+                    break
 
-        if existing is None:
-            new_group = groups.add()
-            new_group.name = dst_name
-            new_group.color = src_group.color
-            new_group.visible = True
-            new_group.obj_name = obj.name
-            scene.intra10_landmark_active_index = len(groups) - 1
+            if existing is None:
+                new_group = groups.add()
+                new_group.name = dst_name
+                new_group.color = src_group.color
+                new_group.visible = True
+                new_group.obj_name = obj.name
+                scene.intra10_landmark_active_index = len(groups) - 1
 
         _redraw_viewports()
         self.report({'INFO'}, f"Mirrored to '{dst_name}'")
@@ -424,13 +408,15 @@ class INTRA10_OT_AddLRSuffix(bpy.types.Operator):
 class INTRA10_OT_SaveLandmarkPreset(bpy.types.Operator):
     bl_idname = "intra10.save_landmark_preset"
     bl_label = "Save Landmark Preset"
+    bl_options = {'REGISTER', 'UNDO'}
 
-    filepath: StringProperty(subtype='FILE_PATH')
-    filter_glob: StringProperty(default="*.json", options={'HIDDEN'})
+    preset_name: StringProperty(name="Preset Name", default="")
 
     def invoke(self, context, event):
-        context.window_manager.fileselect_add(self)
-        return {'RUNNING_MODAL'}
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        self.layout.prop(self, "preset_name", text="Name")
 
     def execute(self, context):
         obj = context.active_object
@@ -438,13 +424,27 @@ class INTRA10_OT_SaveLandmarkPreset(bpy.types.Operator):
             self.report({'WARNING'}, "Select a mesh object")
             return {'CANCELLED'}
 
-        path = self.filepath
-        if not path.lower().endswith('.json'):
-            path += '.json'
+        name = self.preset_name.strip()
+        if not name:
+            self.report({'WARNING'}, "Enter a preset name")
+            return {'CANCELLED'}
 
-        success = landmark_presets.save_preset(path, obj, context.scene)
+        os.makedirs(PRESET_DIR, exist_ok=True)
+
+        safe_name = "".join(c if c.isalnum() or c in (' ', '-', '_') else '_' for c in name)
+        filepath = os.path.join(PRESET_DIR, f"{safe_name}.json")
+
+        was_edit = (obj.mode == 'EDIT')
+        if was_edit:
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        success = landmark_presets.save_preset(filepath, obj, context.scene)
+
+        if was_edit:
+            bpy.ops.object.mode_set(mode='EDIT')
+
         if success:
-            self.report({'INFO'}, f"Preset saved to {path}")
+            self.report({'INFO'}, f"Preset saved: {name}")
         else:
             self.report({'ERROR'}, "Failed to save preset")
         return {'FINISHED'}
@@ -453,21 +453,57 @@ class INTRA10_OT_SaveLandmarkPreset(bpy.types.Operator):
 class INTRA10_OT_LoadLandmarkPreset(bpy.types.Operator):
     bl_idname = "intra10.load_landmark_preset"
     bl_label = "Load Landmark Preset"
+    bl_options = {'REGISTER', 'UNDO'}
 
-    filepath: StringProperty(subtype='FILE_PATH')
-    filter_glob: StringProperty(default="*.json", options={'HIDDEN'})
+    preset_file: EnumProperty(
+        name="Preset",
+        description="Select a preset to load",
+        items=lambda self, context: INTRA10_OT_LoadLandmarkPreset._get_preset_items(),
+    )
+
+    @staticmethod
+    def _get_preset_items():
+        items = []
+        if os.path.isdir(PRESET_DIR):
+            for f in sorted(os.listdir(PRESET_DIR)):
+                if f.lower().endswith('.json'):
+                    display = f[:-5]
+                    items.append((f, display, f"Load {display}"))
+        if not items:
+            items.append(('NONE', "(No presets found)", ""))
+        return items
 
     def invoke(self, context, event):
-        context.window_manager.fileselect_add(self)
-        return {'RUNNING_MODAL'}
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        self.layout.prop(self, "preset_file", text="Preset")
 
     def execute(self, context):
+        if self.preset_file == 'NONE':
+            self.report({'WARNING'}, "No presets available")
+            return {'CANCELLED'}
+
         obj = context.active_object
         if not obj or obj.type != 'MESH':
             self.report({'WARNING'}, "Select a mesh object")
             return {'CANCELLED'}
 
-        success, msg = landmark_presets.load_preset(self.filepath, obj, context.scene)
+        filepath = os.path.join(PRESET_DIR, self.preset_file)
+        if not os.path.isfile(filepath):
+            self.report({'ERROR'}, f"Preset file not found: {self.preset_file}")
+            return {'CANCELLED'}
+
+        was_edit = (obj.mode == 'EDIT')
+        if was_edit:
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        success, msg = landmark_presets.load_preset(filepath, obj, context.scene)
+
+        if was_edit:
+            bpy.ops.object.mode_set(mode='EDIT')
+
+        _redraw_viewports()
         if success:
             self.report({'INFO'}, msg)
         else:
@@ -491,7 +527,6 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         scene = context.scene
         obj = context.active_object
 
-        # --- View toggle + X-ray ---
         is_on = landmark_draw.is_drawing()
         row = layout.row(align=True)
         row.operator(
@@ -503,7 +538,6 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         if is_on:
             row.prop(scene, "intra10_landmark_xray", text="", icon='XRAY')
 
-        # --- Auto mirror toggle ---
         row = layout.row(align=True)
         row.prop(scene, "intra10_landmark_auto_mirror", text="Auto Mirror", icon='MOD_MIRROR', toggle=True)
 
@@ -512,14 +546,6 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         if not obj or obj.type != 'MESH':
             layout.label(text="Select a Mesh Object", icon='ERROR')
             return
-
-        # --- Mark / Clear (edit mode only) ---
-        if context.mode == 'EDIT_MESH':
-            col = layout.column(align=True)
-            col.scale_y = 1.2
-            col.operator("intra10.mark_landmark", text="Mark Edge", icon='MARKER')
-            col.operator("intra10.clear_landmark", text="Clear Edge", icon='TRASH')
-            layout.separator()
 
         # --- Landmark Group List ---
         row = layout.row()
@@ -532,6 +558,7 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
 
         col = row.column(align=True)
         col.operator("intra10.remove_landmark_group", text="", icon='REMOVE')
+        col.operator("intra10.clear_landmark_edges", text="", icon='TRASH')
         if context.mode == 'EDIT_MESH':
             col.operator("intra10.select_landmark_edges", text="", icon='RESTRICT_SELECT_OFF')
         col.operator("intra10.mirror_landmark_group", text="", icon='MOD_MIRROR')
@@ -543,7 +570,7 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         op_r = row_lr.operator("intra10.add_lr_suffix", text=".R")
         op_r.suffix = ".R"
 
-        # --- Custom landmark add (always visible) ---
+        # --- Custom landmark add ---
         box = layout.box()
         row = box.row(align=True)
         row.prop(scene, "intra10_landmark_custom_name", text="")
@@ -634,13 +661,12 @@ classes = [
     INTRA10_PG_LandmarkGroup,
     INTRA10_UL_LandmarkGroupList,
     INTRA10_OT_ToggleLandmarkDraw,
-    INTRA10_OT_MarkLandmark,
-    INTRA10_OT_ClearLandmark,
     INTRA10_OT_SelectLandmarkEdges,
     INTRA10_OT_AddLandmarkGroup,
     INTRA10_OT_AddFingerLandmark,
     INTRA10_OT_AddCustomLandmark,
     INTRA10_OT_RemoveLandmarkGroup,
+    INTRA10_OT_ClearLandmarkEdges,
     INTRA10_OT_MirrorLandmarkGroup,
     INTRA10_OT_AddLRSuffix,
     INTRA10_OT_SaveLandmarkPreset,

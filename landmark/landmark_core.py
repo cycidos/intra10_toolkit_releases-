@@ -164,8 +164,9 @@ def mirror_landmark_group(obj, src_group_name, scene):
         return None
 
     dst_name = _mirror_suffix(src_group_name)
-    if not dst_name:
-        dst_name = src_group_name + ".R" if not src_group_name.endswith(".R") else src_group_name + ".L"
+    same_group = (dst_name is None)
+    if same_group:
+        dst_name = src_group_name
 
     me = obj.data
     src_aname = attr_name(src_group_name)
@@ -194,20 +195,22 @@ def mirror_landmark_group(obj, src_group_name, scene):
         return None
 
     vert_mirror = _build_mirror_map(obj)
-    print(f"[Intra10 ToolKit] Mirror: mirror map size={len(vert_mirror)}/{len(me.vertices)}, src_edges={len(src_edges)}")
+    print(f"[Intra10 ToolKit] Mirror: mirror map size={len(vert_mirror)}/{len(me.vertices)}, src_edges={len(src_edges)}, same_group={same_group}")
 
     edge_lookup = {}
     for i, e in enumerate(me.edges):
         key = frozenset((e.vertices[0], e.vertices[1]))
         edge_lookup[key] = i
 
-    dst_aname = attr_name(dst_name)
-    if dst_aname not in me.attributes:
-        me.attributes.new(name=dst_aname, type='INT', domain='EDGE')
-    dst_attr = me.attributes[dst_aname]
-
-    for i in range(len(dst_attr.data)):
-        dst_attr.data[i].value = 0
+    if same_group:
+        dst_attr = src_attr
+    else:
+        dst_aname = attr_name(dst_name)
+        if dst_aname not in me.attributes:
+            me.attributes.new(name=dst_aname, type='INT', domain='EDGE')
+        dst_attr = me.attributes[dst_aname]
+        for i in range(len(dst_attr.data)):
+            dst_attr.data[i].value = 0
 
     mirrored_count = 0
     unmapped_verts = set()
@@ -230,9 +233,15 @@ def mirror_landmark_group(obj, src_group_name, scene):
     if unmapped_verts:
         print(f"[Intra10 ToolKit] Mirror: {len(unmapped_verts)} unmapped vertices (first 10: {list(unmapped_verts)[:10]})")
 
-    if mirrored_count == 0:
+    if mirrored_count == 0 and not same_group:
+        dst_aname = attr_name(dst_name)
         if dst_aname in me.attributes:
             me.attributes.remove(me.attributes[dst_aname])
+        if was_edit:
+            bpy.ops.object.mode_set(mode='EDIT')
+        return None
+
+    if mirrored_count == 0:
         if was_edit:
             bpy.ops.object.mode_set(mode='EDIT')
         return None
