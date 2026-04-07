@@ -43,10 +43,6 @@ def mark_edges(context, group_name, value=1):
             count += 1
 
     bmesh.update_edit_mesh(me)
-
-    print(f"[Intra10 ToolKit] DEBUG mark_edges: group='{group_name}' aname='{aname}' value={value} count={count}")
-    print(f"[Intra10 ToolKit] DEBUG mark_edges: mesh.attrs={[a.name for a in me.attributes]}")
-
     return count
 
 
@@ -140,103 +136,27 @@ def _mirror_suffix(name):
     return None
 
 
-def _build_mirror_map_coords(verts_co):
-    """Coordinate-based mirror map: X-flip with generous threshold."""
+def _build_mirror_map(obj):
+    """Build vertex mirror map using X-axis symmetry with KDTree."""
     import mathutils.kdtree
-
-    n = len(verts_co)
-    kd = mathutils.kdtree.KDTree(n)
-    for i, co in enumerate(verts_co):
-        kd.insert(co, i)
-    kd.balance()
-
-    mirror = {}
-    for i, co in enumerate(verts_co):
-        mirrored = co.copy()
-        mirrored.x = -mirrored.x
-        _, idx, dist = kd.find(mirrored)
-        if dist < 0.001:
-            mirror[i] = idx
-    return mirror
-
-
-def _build_mirror_map_topology(obj):
-    """Topology-based mirror map using BFS from center vertices."""
-    from mathutils import Vector
 
     me = obj.data
     verts = me.vertices
     n = len(verts)
 
-    vert_edges = [[] for _ in range(n)]
-    for e in me.edges:
-        v0, v1 = e.vertices[0], e.vertices[1]
-        vert_edges[v0].append((e.index, v1))
-        vert_edges[v1].append((e.index, v0))
-
-    verts_co = [v.co.copy() for v in verts]
-    coord_mirror = _build_mirror_map_coords(verts_co)
-
-    if len(coord_mirror) > n * 0.3:
-        return coord_mirror
-
-    center_threshold = 0.001
-    center_verts = [i for i, co in enumerate(verts_co) if abs(co.x) < center_threshold]
+    kd = mathutils.kdtree.KDTree(n)
+    for i, v in enumerate(verts):
+        kd.insert(v.co, i)
+    kd.balance()
 
     mirror = {}
-    for cv in center_verts:
-        mirror[cv] = cv
-
-    visited = set(center_verts)
-    queue = list(center_verts)
-
-    while queue:
-        current = queue.pop(0)
-        m_current = mirror.get(current)
-        if m_current is None:
-            continue
-
-        current_edges = sorted(vert_edges[current], key=lambda x: x[0])
-        mirror_edges = sorted(vert_edges[m_current], key=lambda x: x[0])
-
-        for (_, neighbor) in current_edges:
-            if neighbor in visited:
-                continue
-
-            best_match = None
-            best_dist = float('inf')
-            target_co = verts_co[neighbor].copy()
-            target_co.x = -target_co.x
-
-            for (_, m_neighbor) in mirror_edges:
-                if m_neighbor in mirror.values() and mirror.get(neighbor) != m_neighbor:
-                    continue
-                d = (verts_co[m_neighbor] - target_co).length
-                if d < best_dist:
-                    best_dist = d
-                    best_match = m_neighbor
-
-            if best_match is not None and best_dist < 0.01:
-                mirror[neighbor] = best_match
-                if best_match not in mirror:
-                    mirror[best_match] = neighbor
-                visited.add(neighbor)
-                visited.add(best_match)
-                queue.append(neighbor)
-
+    for i, v in enumerate(verts):
+        mirrored = v.co.copy()
+        mirrored.x = -mirrored.x
+        _, idx, dist = kd.find(mirrored)
+        if dist < 0.005:
+            mirror[i] = idx
     return mirror
-
-
-def _build_mirror_map(obj):
-    """Build vertex mirror map. Tries topology first, falls back to coords."""
-    me = obj.data
-    verts_co = [v.co.copy() for v in me.vertices]
-
-    topo_mirror = _build_mirror_map_topology(obj)
-    if len(topo_mirror) > len(verts_co) * 0.3:
-        return topo_mirror
-
-    return _build_mirror_map_coords(verts_co)
 
 
 def mirror_landmark_group(obj, src_group_name, scene):
@@ -255,16 +175,30 @@ def mirror_landmark_group(obj, src_group_name, scene):
         bpy.ops.object.mode_set(mode='OBJECT')
 
     if src_aname not in me.attributes:
+        print(f"[Intra10 ToolKit] Mirror: source attribute '{src_aname}' not found. Available: {[a.name for a in me.attributes]}")
         if was_edit:
             bpy.ops.object.mode_set(mode='EDIT')
         return None
 
     src_attr = me.attributes[src_aname]
+
+    src_edges = []
+    for i, d in enumerate(src_attr.data):
+        if d.value == 1:
+            src_edges.append(i)
+
+    if not src_edges:
+        print(f"[Intra10 ToolKit] Mirror: no marked edges in '{src_group_name}'")
+        if was_edit:
+            bpy.ops.object.mode_set(mode='EDIT')
+        return None
+
     vert_mirror = _build_mirror_map(obj)
+    print(f"[Intra10 ToolKit] Mirror: mirror map size={len(vert_mirror)}/{len(me.vertices)}, src_edges={len(src_edges)}")
 
     edge_lookup = {}
     for i, e in enumerate(me.edges):
-        key = tuple(sorted(e.vertices))
+        key = frozenset((e.vertices[0], e.vertices[1]))
         edge_lookup[key] = i
 
     dst_aname = attr_name(dst_name)
@@ -276,19 +210,25 @@ def mirror_landmark_group(obj, src_group_name, scene):
         dst_attr.data[i].value = 0
 
     mirrored_count = 0
-    for i, d in enumerate(src_attr.data):
-        if d.value != 1:
-            continue
+    unmapped_verts = set()
+    for i in src_edges:
         e = me.edges[i]
         v0, v1 = e.vertices[0], e.vertices[1]
         mv0 = vert_mirror.get(v0)
         mv1 = vert_mirror.get(v1)
+        if mv0 is None:
+            unmapped_verts.add(v0)
+        if mv1 is None:
+            unmapped_verts.add(v1)
         if mv0 is not None and mv1 is not None:
-            key = tuple(sorted((mv0, mv1)))
+            key = frozenset((mv0, mv1))
             dst_idx = edge_lookup.get(key)
             if dst_idx is not None:
                 dst_attr.data[dst_idx].value = 1
                 mirrored_count += 1
+
+    if unmapped_verts:
+        print(f"[Intra10 ToolKit] Mirror: {len(unmapped_verts)} unmapped vertices (first 10: {list(unmapped_verts)[:10]})")
 
     if mirrored_count == 0:
         if dst_aname in me.attributes:
@@ -297,7 +237,7 @@ def mirror_landmark_group(obj, src_group_name, scene):
             bpy.ops.object.mode_set(mode='EDIT')
         return None
 
-    print(f"[Intra10 ToolKit] Mirror: {src_group_name} -> {dst_name}, {mirrored_count} edges, map size={len(vert_mirror)}")
+    print(f"[Intra10 ToolKit] Mirror: {src_group_name} -> {dst_name}, {mirrored_count}/{len(src_edges)} edges mirrored")
 
     if was_edit:
         bpy.ops.object.mode_set(mode='EDIT')

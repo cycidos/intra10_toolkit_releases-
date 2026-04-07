@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import bpy
+import bmesh
 from bpy.props import (
     StringProperty, BoolProperty, FloatVectorProperty, FloatProperty,
     IntProperty, EnumProperty, CollectionProperty,
@@ -356,7 +357,67 @@ class INTRA10_OT_MirrorLandmarkGroup(bpy.types.Operator):
             new_group.obj_name = obj.name
             scene.intra10_landmark_active_index = len(groups) - 1
 
+        _redraw_viewports()
         self.report({'INFO'}, f"Mirrored to '{dst_name}'")
+        return {'FINISHED'}
+
+
+class INTRA10_OT_AddLRSuffix(bpy.types.Operator):
+    bl_idname = "intra10.add_lr_suffix"
+    bl_label = "Add .L/.R Suffix"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    suffix: StringProperty(name="Suffix", default=".L")
+
+    def execute(self, context):
+        scene = context.scene
+        idx = scene.intra10_landmark_active_index
+        groups = scene.intra10_landmark_groups
+        if idx < 0 or idx >= len(groups):
+            self.report({'WARNING'}, "No group selected")
+            return {'CANCELLED'}
+
+        group = groups[idx]
+        old_name = group.name
+
+        for suf in [".L", ".R", ".l", ".r", "_L", "_R", " L", " R",
+                    ".Left", ".Right", ".left", ".right"]:
+            if old_name.endswith(suf):
+                old_name = old_name[:-len(suf)]
+                break
+
+        new_name = old_name + self.suffix
+
+        obj = context.active_object
+        if obj and obj.type == 'MESH' and obj.name == group.obj_name:
+            old_aname = landmark_core.attr_name(group.name)
+            new_aname = landmark_core.attr_name(new_name)
+            me = obj.data
+            if old_aname in me.attributes and old_aname != new_aname:
+                if obj.mode == 'EDIT':
+                    bm = bmesh.from_edit_mesh(me)
+                    old_layer = bm.edges.layers.int.get(old_aname)
+                    if old_layer:
+                        if new_aname not in me.attributes:
+                            me.attributes.new(name=new_aname, type='INT', domain='EDGE')
+                        new_layer = bm.edges.layers.int.get(new_aname)
+                        if not new_layer:
+                            new_layer = bm.edges.layers.int.new(new_aname)
+                        for e in bm.edges:
+                            e[new_layer] = e[old_layer]
+                        bm.edges.layers.int.remove(old_layer)
+                    bmesh.update_edit_mesh(me)
+                else:
+                    old_attr = me.attributes[old_aname]
+                    if new_aname not in me.attributes:
+                        me.attributes.new(name=new_aname, type='INT', domain='EDGE')
+                    new_attr = me.attributes[new_aname]
+                    for i, d in enumerate(old_attr.data):
+                        new_attr.data[i].value = d.value
+                    me.attributes.remove(old_attr)
+
+        group.name = new_name
+        self.report({'INFO'}, f"Renamed to '{new_name}'")
         return {'FINISHED'}
 
 
@@ -475,6 +536,13 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
             col.operator("intra10.select_landmark_edges", text="", icon='RESTRICT_SELECT_OFF')
         col.operator("intra10.mirror_landmark_group", text="", icon='MOD_MIRROR')
 
+        # --- .L / .R suffix buttons ---
+        row_lr = layout.row(align=True)
+        op_l = row_lr.operator("intra10.add_lr_suffix", text=".L")
+        op_l.suffix = ".L"
+        op_r = row_lr.operator("intra10.add_lr_suffix", text=".R")
+        op_r.suffix = ".R"
+
         # --- Custom landmark add (always visible) ---
         box = layout.box()
         row = box.row(align=True)
@@ -574,6 +642,7 @@ classes = [
     INTRA10_OT_AddCustomLandmark,
     INTRA10_OT_RemoveLandmarkGroup,
     INTRA10_OT_MirrorLandmarkGroup,
+    INTRA10_OT_AddLRSuffix,
     INTRA10_OT_SaveLandmarkPreset,
     INTRA10_OT_LoadLandmarkPreset,
     INTRA10_PT_Landmarks,
