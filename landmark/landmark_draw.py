@@ -115,7 +115,8 @@ def _draw_landmarks():
         shader = gpu.shader.from_builtin('UNIFORM_COLOR')
         batch = batch_for_shader(shader, 'LINES', {"pos": coords})
 
-        gpu.state.line_width_set(3.0)
+        line_w = getattr(scene, "intra10_landmark_line_width", 3.0)
+        gpu.state.line_width_set(line_w)
         gpu.state.blend_set('ALPHA')
 
         if is_xray:

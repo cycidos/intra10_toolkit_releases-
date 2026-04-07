@@ -2,7 +2,7 @@
 
 import bpy
 from bpy.props import (
-    StringProperty, BoolProperty, FloatVectorProperty,
+    StringProperty, BoolProperty, FloatVectorProperty, FloatProperty,
     IntProperty, EnumProperty, CollectionProperty,
 )
 from . import landmark_core
@@ -482,6 +482,9 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         row.prop(scene, "intra10_landmark_custom_color", text="")
         box.operator("intra10.add_custom_landmark", text="Add Landmark", icon='ADD')
 
+        # --- Line width ---
+        layout.prop(scene, "intra10_landmark_line_width", text="Line Width")
+
         layout.separator()
 
 
@@ -608,6 +611,15 @@ def register_properties():
         size=4, min=0.0, max=1.0,
         default=DEFAULT_CUSTOM_COLOR,
     )
+    bpy.types.Scene.intra10_landmark_line_width = FloatProperty(
+        name="Line Width",
+        description="Landmark line thickness",
+        default=3.0,
+        min=1.0,
+        max=10.0,
+        step=10,
+        precision=1,
+    )
 
 
 def unregister_properties():
@@ -620,6 +632,7 @@ def unregister_properties():
         "intra10_landmark_auto_mirror",
         "intra10_landmark_custom_name",
         "intra10_landmark_custom_color",
+        "intra10_landmark_line_width",
     ]
     for prop in props:
         if hasattr(bpy.types.Scene, prop):
