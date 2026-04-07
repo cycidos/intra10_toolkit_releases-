@@ -143,9 +143,9 @@ def _mirror_suffix(name):
 def _build_mirror_map(obj):
     me = obj.data
     verts = me.vertices
-    from mathutils import KDTree
+    import mathutils.kdtree
 
-    kd = KDTree(len(verts))
+    kd = mathutils.kdtree.KDTree(len(verts))
     for i, v in enumerate(verts):
         kd.insert(v.co, i)
     kd.balance()
