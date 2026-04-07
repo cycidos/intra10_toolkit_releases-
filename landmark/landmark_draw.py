@@ -7,29 +7,32 @@ from gpu_extras.batch import batch_for_shader
 from .landmark_defs import attr_name
 
 _draw_handler = None
+_debug_counter = 0
 
 
 def _collect_coords_object_mode(obj, group_name, mat):
     mesh = obj.data
     aname = attr_name(group_name)
     if aname not in mesh.attributes:
-        return []
+        return [], aname, "attr_not_found"
 
     attr = mesh.attributes[aname]
     edges = mesh.edges
     verts = mesh.vertices
     coords = []
+    marked = 0
 
     for i, data in enumerate(attr.data):
         if data.value != 1:
             continue
+        marked += 1
         if i >= len(edges):
             continue
         e = edges[i]
         coords.append(mat @ verts[e.vertices[0]].co)
         coords.append(mat @ verts[e.vertices[1]].co)
 
-    return coords
+    return coords, aname, f"marked={marked}"
 
 
 def _collect_coords_edit_mode(obj, group_name, mat):
@@ -39,18 +42,22 @@ def _collect_coords_edit_mode(obj, group_name, mat):
 
     layer = bm.edges.layers.int.get(aname)
     if not layer:
-        return []
+        all_layers = [l.name for l in bm.edges.layers.int.values()]
+        return [], aname, f"layer_not_found(available={all_layers})"
 
     coords = []
+    marked = 0
     for e in bm.edges:
         if e[layer] == 1:
+            marked += 1
             coords.append(mat @ e.verts[0].co)
             coords.append(mat @ e.verts[1].co)
 
-    return coords
+    return coords, aname, f"marked={marked}"
 
 
 def _draw_landmarks():
+    global _debug_counter
     context = bpy.context
     obj = context.active_object
 
@@ -73,16 +80,26 @@ def _draw_landmarks():
     is_xray = getattr(scene, "intra10_landmark_xray", False)
     is_edit = (obj.mode == 'EDIT')
 
+    should_debug = (_debug_counter % 120 == 0)
+    _debug_counter += 1
+
     for group in scene.intra10_landmark_groups:
         if group.obj_name != obj.name:
             continue
         if not group.visible:
             continue
 
+        group_name = group.name
+
         if is_edit:
-            coords = _collect_coords_edit_mode(obj, group.name, mat)
+            coords, aname, info = _collect_coords_edit_mode(obj, group_name, mat)
         else:
-            coords = _collect_coords_object_mode(obj, group.name, mat)
+            coords, aname, info = _collect_coords_object_mode(obj, group_name, mat)
+
+        if should_debug:
+            mode = 'EDIT' if is_edit else 'OBJECT'
+            mesh_attrs = [a.name for a in obj.data.attributes]
+            print(f"[Intra10 ToolKit] draw: group='{group_name}' aname='{aname}' {mode} coords={len(coords)} {info} attrs={mesh_attrs}")
 
         if not coords:
             continue

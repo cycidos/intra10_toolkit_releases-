@@ -27,8 +27,14 @@ def mark_edges(context, group_name, value=1):
 
     me = obj.data
     bm = bmesh.from_edit_mesh(me)
-    aname = _ensure_attribute(me, group_name)
-    layer = _get_bmesh_layer(bm, aname)
+
+    aname = attr_name(group_name)
+    if aname not in me.attributes:
+        me.attributes.new(name=aname, type='INT', domain='EDGE')
+
+    layer = bm.edges.layers.int.get(aname)
+    if not layer:
+        layer = bm.edges.layers.int.new(aname)
 
     count = 0
     for e in bm.edges:
@@ -37,6 +43,10 @@ def mark_edges(context, group_name, value=1):
             count += 1
 
     bmesh.update_edit_mesh(me)
+
+    print(f"[Intra10 ToolKit] DEBUG mark_edges: group='{group_name}' aname='{aname}' value={value} count={count}")
+    print(f"[Intra10 ToolKit] DEBUG mark_edges: mesh.attrs={[a.name for a in me.attributes]}")
+
     return count
 
 
@@ -215,8 +225,13 @@ def auto_mirror_mark(context, group_name):
     if not dst_name:
         dst_name = group_name
 
-    aname = _ensure_attribute(me, dst_name)
-    layer = _get_bmesh_layer(bm, aname)
+    aname = attr_name(dst_name)
+    if aname not in me.attributes:
+        me.attributes.new(name=aname, type='INT', domain='EDGE')
+
+    layer = bm.edges.layers.int.get(aname)
+    if not layer:
+        layer = bm.edges.layers.int.new(aname)
 
     vert_mirror = _build_mirror_map(obj)
 
