@@ -167,6 +167,14 @@ class INTRA10_OT_AddLandmarkGroup(bpy.types.Operator):
 
         for g in scene.intra10_landmark_groups:
             if g.name == self.part_name and g.obj_name == obj.name:
+                scene.intra10_landmark_active_index = list(scene.intra10_landmark_groups).index(g)
+                if context.mode == 'EDIT_MESH':
+                    count = landmark_core.mark_edges(context, self.part_name)
+                    if scene.intra10_landmark_auto_mirror:
+                        landmark_core.auto_mirror_mark(context, self.part_name)
+                    _redraw_viewports()
+                    self.report({'INFO'}, f"Marked {count} edges in '{self.part_name}'")
+                    return {'FINISHED'}
                 self.report({'WARNING'}, f"'{self.part_name}' already exists")
                 return {'CANCELLED'}
 
@@ -177,7 +185,15 @@ class INTRA10_OT_AddLandmarkGroup(bpy.types.Operator):
         group.obj_name = obj.name
 
         scene.intra10_landmark_active_index = len(scene.intra10_landmark_groups) - 1
-        self.report({'INFO'}, f"Added landmark group '{self.part_name}'")
+
+        if context.mode == 'EDIT_MESH':
+            count = landmark_core.mark_edges(context, self.part_name)
+            if scene.intra10_landmark_auto_mirror:
+                landmark_core.auto_mirror_mark(context, self.part_name)
+            _redraw_viewports()
+            self.report({'INFO'}, f"Added '{self.part_name}' and marked {count} edges")
+        else:
+            self.report({'INFO'}, f"Added landmark group '{self.part_name}'")
         return {'FINISHED'}
 
 
@@ -248,6 +264,14 @@ class INTRA10_OT_AddCustomLandmark(bpy.types.Operator):
 
         for g in scene.intra10_landmark_groups:
             if g.name == name and g.obj_name == obj.name:
+                scene.intra10_landmark_active_index = list(scene.intra10_landmark_groups).index(g)
+                if context.mode == 'EDIT_MESH':
+                    count = landmark_core.mark_edges(context, name)
+                    if scene.intra10_landmark_auto_mirror:
+                        landmark_core.auto_mirror_mark(context, name)
+                    _redraw_viewports()
+                    self.report({'INFO'}, f"Marked {count} edges in '{name}'")
+                    return {'FINISHED'}
                 self.report({'WARNING'}, f"'{name}' already exists")
                 return {'CANCELLED'}
 
@@ -258,7 +282,15 @@ class INTRA10_OT_AddCustomLandmark(bpy.types.Operator):
         group.obj_name = obj.name
 
         scene.intra10_landmark_active_index = len(scene.intra10_landmark_groups) - 1
-        self.report({'INFO'}, f"Added custom landmark '{name}'")
+
+        if context.mode == 'EDIT_MESH':
+            count = landmark_core.mark_edges(context, name)
+            if scene.intra10_landmark_auto_mirror:
+                landmark_core.auto_mirror_mark(context, name)
+            _redraw_viewports()
+            self.report({'INFO'}, f"Added custom landmark '{name}' and marked {count} edges")
+        else:
+            self.report({'INFO'}, f"Added custom landmark '{name}'")
         return {'FINISHED'}
 
 
