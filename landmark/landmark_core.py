@@ -5,7 +5,15 @@ import bmesh
 from .landmark_defs import attr_name
 
 
-def _ensure_bmesh_layer(bm, aname):
+def _ensure_attribute(mesh, group_name):
+    """Ensure mesh attribute exists. Must be called before bmesh layer access."""
+    aname = attr_name(group_name)
+    if aname not in mesh.attributes:
+        mesh.attributes.new(name=aname, type='INT', domain='EDGE')
+    return aname
+
+
+def _get_bmesh_layer(bm, aname):
     layer = bm.edges.layers.int.get(aname)
     if not layer:
         layer = bm.edges.layers.int.new(aname)
@@ -19,8 +27,8 @@ def mark_edges(context, group_name, value=1):
 
     me = obj.data
     bm = bmesh.from_edit_mesh(me)
-    aname = attr_name(group_name)
-    layer = _ensure_bmesh_layer(bm, aname)
+    aname = _ensure_attribute(me, group_name)
+    layer = _get_bmesh_layer(bm, aname)
 
     count = 0
     for e in bm.edges:
@@ -207,8 +215,8 @@ def auto_mirror_mark(context, group_name):
     if not dst_name:
         dst_name = group_name
 
-    aname = attr_name(dst_name)
-    layer = _ensure_bmesh_layer(bm, aname)
+    aname = _ensure_attribute(me, dst_name)
+    layer = _get_bmesh_layer(bm, aname)
 
     vert_mirror = _build_mirror_map(obj)
 

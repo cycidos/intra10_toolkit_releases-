@@ -4,14 +4,14 @@ import bpy
 import bmesh
 import gpu
 from gpu_extras.batch import batch_for_shader
-from .landmark_defs import ATTR_PREFIX
+from .landmark_defs import attr_name
 
 _draw_handler = None
 
 
 def _collect_coords_object_mode(obj, group_name, mat):
     mesh = obj.data
-    aname = f"{ATTR_PREFIX}{group_name.replace(' ', '_').replace('.', '_')}"
+    aname = attr_name(group_name)
     if aname not in mesh.attributes:
         return []
 
@@ -35,7 +35,7 @@ def _collect_coords_object_mode(obj, group_name, mat):
 def _collect_coords_edit_mode(obj, group_name, mat):
     mesh = obj.data
     bm = bmesh.from_edit_mesh(mesh)
-    aname = f"{ATTR_PREFIX}{group_name.replace(' ', '_').replace('.', '_')}"
+    aname = attr_name(group_name)
 
     layer = bm.edges.layers.int.get(aname)
     if not layer:
