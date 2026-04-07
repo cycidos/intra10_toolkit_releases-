@@ -5,13 +5,6 @@ import bmesh
 from .landmark_defs import attr_name
 
 
-def _ensure_attribute(mesh, group_name):
-    aname = attr_name(group_name)
-    if aname not in mesh.attributes:
-        mesh.attributes.new(name=aname, type='INT', domain='EDGE')
-    return aname
-
-
 def _ensure_bmesh_layer(bm, aname):
     layer = bm.edges.layers.int.get(aname)
     if not layer:
@@ -26,7 +19,7 @@ def mark_edges(context, group_name, value=1):
 
     me = obj.data
     bm = bmesh.from_edit_mesh(me)
-    aname = _ensure_attribute(me, group_name)
+    aname = attr_name(group_name)
     layer = _ensure_bmesh_layer(bm, aname)
 
     count = 0
@@ -72,9 +65,16 @@ def get_marked_edge_indices(obj, group_name):
 
     me = obj.data
     aname = attr_name(group_name)
+
+    if obj.mode == 'EDIT':
+        bm = bmesh.from_edit_mesh(me)
+        layer = bm.edges.layers.int.get(aname)
+        if not layer:
+            return []
+        return [e.index for e in bm.edges if e[layer] == 1]
+
     if aname not in me.attributes:
         return []
-
     attr = me.attributes[aname]
     return [i for i, d in enumerate(attr.data) if d.value == 1]
 
@@ -97,10 +97,19 @@ def set_marked_edge_indices(obj, group_name, indices):
 def remove_attribute(obj, group_name):
     if not obj or obj.type != 'MESH':
         return
+
     me = obj.data
     aname = attr_name(group_name)
-    if aname in me.attributes:
-        me.attributes.remove(me.attributes[aname])
+
+    if obj.mode == 'EDIT':
+        bm = bmesh.from_edit_mesh(me)
+        layer = bm.edges.layers.int.get(aname)
+        if layer:
+            bm.edges.layers.int.remove(layer)
+        bmesh.update_edit_mesh(me)
+    else:
+        if aname in me.attributes:
+            me.attributes.remove(me.attributes[aname])
 
 
 def _mirror_suffix(name):
@@ -114,7 +123,6 @@ def _mirror_suffix(name):
 
 
 def _build_mirror_map(obj):
-    """Build vertex mirror map using spatial X-axis symmetry."""
     me = obj.data
     verts = me.vertices
     from mathutils import KDTree
@@ -136,7 +144,6 @@ def _build_mirror_map(obj):
 
 
 def mirror_landmark_group(obj, src_group_name, scene):
-    """Mirror a landmark group to the opposite side. Returns new group name or None."""
     if not obj or obj.type != 'MESH':
         return None
 
@@ -189,7 +196,6 @@ def mirror_landmark_group(obj, src_group_name, scene):
 
 
 def auto_mirror_mark(context, group_name):
-    """When auto-mirror is on, also mark mirrored edges in same group or mirrored group."""
     obj = context.edit_object
     if not obj or obj.type != 'MESH':
         return
@@ -202,7 +208,6 @@ def auto_mirror_mark(context, group_name):
         dst_name = group_name
 
     aname = attr_name(dst_name)
-    _ensure_attribute(me, dst_name)
     layer = _ensure_bmesh_layer(bm, aname)
 
     vert_mirror = _build_mirror_map(obj)

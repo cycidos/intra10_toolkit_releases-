@@ -443,6 +443,13 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
             col.operator("intra10.select_landmark_edges", text="", icon='RESTRICT_SELECT_OFF')
         col.operator("intra10.mirror_landmark_group", text="", icon='MOD_MIRROR')
 
+        # --- Custom landmark add (always visible) ---
+        box = layout.box()
+        row = box.row(align=True)
+        row.prop(scene, "intra10_landmark_custom_name", text="")
+        row.prop(scene, "intra10_landmark_custom_color", text="")
+        box.operator("intra10.add_custom_landmark", text="Add Landmark", icon='ADD')
+
         layout.separator()
 
 
@@ -500,25 +507,6 @@ class INTRA10_PT_LandmarksBody(bpy.types.Panel):
             op.range_end = rend
 
 
-class INTRA10_PT_LandmarksCustom(bpy.types.Panel):
-    bl_label = "Custom"
-    bl_idname = "INTRA10_PT_landmarks_custom"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "Intra10 ToolKit"
-    bl_parent_id = "INTRA10_PT_landmarks"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-
-        col = layout.column(align=True)
-        col.prop(scene, "intra10_landmark_custom_name", text="Name")
-        col.prop(scene, "intra10_landmark_custom_color", text="Color")
-        col.operator("intra10.add_custom_landmark", text="Add Custom", icon='ADD')
-
-
 class INTRA10_PT_LandmarksPreset(bpy.types.Panel):
     bl_label = "Preset"
     bl_idname = "INTRA10_PT_landmarks_preset"
@@ -556,7 +544,6 @@ classes = [
     INTRA10_PT_Landmarks,
     INTRA10_PT_LandmarksFacial,
     INTRA10_PT_LandmarksBody,
-    INTRA10_PT_LandmarksCustom,
     INTRA10_PT_LandmarksPreset,
 ]
 
