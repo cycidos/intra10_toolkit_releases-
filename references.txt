@@ -1,0 +1,7 @@
+# Reference Sources
+# List URLs of external repositories or downloaded reference code here.
+# Reference code in the reference/ folder is gitignored for repository optimization.
+#
+# Format:
+#   [date] URL - description
+#

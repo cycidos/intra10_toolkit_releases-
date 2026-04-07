@@ -1,0 +1,67 @@
+---
+description: "Blender 에드온 Python 코드 규칙 (extension 방식, N-Panel UI)"
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Blender 에드온 코드 규칙
+
+## 기능 폴더 구조
+
+각 기능은 독립된 폴더로 관리한다:
+
+```
+feature_name/
+  __init__.py    # 모듈 export
+  ui.py          # Panel/Operator + classes 리스트 + register_properties/unregister_properties
+  (로직).py      # 비즈니스 로직 분리
+```
+
+### `__init__.py` 패턴
+
+```python
+from . import ui
+from . import feature_logic  # 로직 모듈이 있는 경우
+```
+
+### `ui.py` 필수 요소
+
+```python
+import bpy
+
+class INTRA10_PT_FeatureName(bpy.types.Panel):
+    bl_label = "Feature Name"
+    bl_idname = "INTRA10_PT_feature_name"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Intra10 ToolKit"
+
+    def draw(self, context):
+        layout = self.layout
+        # ...
+
+classes = [
+    INTRA10_PT_FeatureName,
+    # Operator, PropertyGroup 등
+]
+
+def register_properties():
+    pass  # bpy.types.Scene에 프로퍼티 등록
+
+def unregister_properties():
+    pass  # 프로퍼티 삭제
+```
+
+## 네이밍
+
+- Panel: `INTRA10_PT_*`
+- Operator: `INTRA10_OT_*` (bl_idname: `intra10.*`)
+- PropertyGroup: `INTRA10_PG_*`
+- UIList: `INTRA10_UL_*`
+
+## 일반 규칙
+
+- Blender 5.0+ API 사용
+- `bl_info`는 루트 `__init__.py`에만 정의
+- `blender_manifest.toml`로 extension 등록
+- print 디버그는 `[Intra10 ToolKit]` prefix 사용

@@ -1,0 +1,85 @@
+---
+description: "intra10_toolkit 프로젝트 전체 규칙: 구조, Git, 버전, 배포, reference, 작성자 규칙"
+alwaysApply: true
+---
+
+# intra10_toolkit - 프로젝트 규칙
+
+## 1. 프로젝트 개요
+
+- **Blender 5+** N-Panel 에드온 (extension 방식)
+- 배포: **git gist** 및 **GitHub Releases** (zip 파일 배포 아님)
+- 작성자: **kimhwan** (모든 코드, 커밋, 설명에 AI 이름이나 "cursor"를 절대 사용하지 않는다)
+
+---
+
+## 2. 프로젝트 구조
+
+- 상위 폴더에 **기능별 폴더**를 만들어 관리 (hunchkin_rigging_toolKit 패턴 참고)
+- 각 기능 폴더는 N-Panel에 UI 섹션 하나로 표시된다
+- 기능 폴더 이름: **snake_case**
+- 기능 폴더 기본 구조:
+
+```
+feature_name/
+  __init__.py    # from . import ui (및 로직 모듈)
+  ui.py          # Panel, Operator 클래스 + classes 리스트
+  (로직파일).py   # 필요 시 로직 분리
+```
+
+- 공용 기능: 프로젝트 하위 **utils/** 폴더에 기능별로 분리하여 정리
+- `__init__.py` (루트): 기능 폴더를 import하고 register/unregister 관리
+
+---
+
+## 3. Git 규칙
+
+- **user.name**: kimhwan
+- **user.email**: kimhwan@intra10.com
+- **개발**: dev 브랜치에서 진행
+- **릴리즈**: dev → main 병합 후 main 기준으로 릴리즈
+
+### 커밋 메시지
+
+- **첫 줄**: 업데이트 내용 요약 (한 줄)
+- **이하**: 상세 업데이트 내용을 1. 2. 3. 으로 나열
+- **main 릴리즈 시**: 커밋 메시지에 릴리즈 버전 포함 (예: `Release v1.0.0`)
+- 커밋 메시지에 AI 이름이나 "cursor"를 절대 쓰지 않는다
+
+---
+
+## 4. 버전 관리 (Semantic Versioning)
+
+- **Major**: 기능이 크게 변경될 때
+- **Minor**: 기능 추가 또는 업데이트
+- **Patch**: 버그 수정 (핫픽스)
+- 배포 시 반드시 버전을 올린다. 버전을 올리지 않고는 배포하지 않는다
+- `blender_manifest.toml`의 `version`과 `__init__.py`의 `bl_info["version"]`을 동시에 갱신
+
+---
+
+## 5. reference 폴더
+
+- **용도**: 참고 전용. 수정하지 않음
+- reference 코드를 **import 하지 않는다**. 필요한 로직은 프로젝트에 직접 구현
+- 외부 레포지토리: **git submodule** 사용 또는 별도 다운로드
+- 받아온 URL은 **references.txt**에 기록
+- reference 폴더 내용은 **.gitignore**에 추가하여 저장소 최적화
+
+---
+
+## 6. 작성자 규칙
+
+- 모든 코드의 author/maintainer: **kimhwan**
+- 코드, 주석, 커밋, PR, 설명 어디에도 AI 이름(Claude, ChatGPT 등)이나 "cursor"를 쓰지 않는다
+- `bl_info["author"]`, `blender_manifest.toml`의 `maintainer` 모두 **kimhwan**
+
+---
+
+## 7. Blender 코드 규칙
+
+- **Blender 5.0+** API 기준
+- Extension 방식 (`blender_manifest.toml` 사용)
+- N-Panel category: **"Intra10 ToolKit"** (모든 기능 패널이 같은 탭에 표시)
+- Panel `bl_idname` prefix: **INTRA10_PT_**
+- Operator `bl_idname` prefix: **intra10.**
