@@ -14,6 +14,13 @@ from .landmark_defs import (
 )
 
 
+def _redraw_viewports():
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type == 'VIEW_3D':
+                area.tag_redraw()
+
+
 # ======================================================================
 # PropertyGroups
 # ======================================================================
@@ -85,6 +92,7 @@ class INTRA10_OT_MarkLandmark(bpy.types.Operator):
         if scene.intra10_landmark_auto_mirror:
             landmark_core.auto_mirror_mark(context, group.name)
 
+        _redraw_viewports()
         self.report({'INFO'}, f"Marked {count} edges in '{group.name}'")
         return {'FINISHED'}
 
@@ -109,6 +117,7 @@ class INTRA10_OT_ClearLandmark(bpy.types.Operator):
 
         group = groups[idx]
         count = landmark_core.clear_edges(context, group.name)
+        _redraw_viewports()
         self.report({'INFO'}, f"Cleared {count} edges from '{group.name}'")
         return {'FINISHED'}
 
