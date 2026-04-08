@@ -3,7 +3,7 @@
 bl_info = {
     "name": "Intra10 ToolKit",
     "author": "kimhwan",
-    "version": (0, 1, 11),
+    "version": (0, 1, 12),
     "blender": (5, 0, 0),
     "location": "View3D > N-Panel > Intra10 ToolKit",
     "description": "Collection of tools for Blender workflow",

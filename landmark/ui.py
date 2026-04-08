@@ -161,18 +161,27 @@ class INTRA10_OT_AddFingerLandmark(bpy.types.Operator):
         size=4, min=0.0, max=1.0,
         default=(1.0, 0.5, 0.2, 1.0),
     )
-    range_start: IntProperty(name="From", default=0, min=0, max=3)
-    range_end: IntProperty(name="To", default=3, min=0, max=3)
+    range_start: IntProperty(name="Start", default=0, min=0, max=3)
+    range_end: IntProperty(name="End", default=3, min=0, max=3)
+    finger_number: EnumProperty(
+        name="Number",
+        items=[
+            ('0', '00', ''),
+            ('1', '01', ''),
+            ('2', '02', ''),
+            ('3', '03', ''),
+        ],
+        default='0',
+    )
 
     def invoke(self, context, event):
+        self.finger_number = str(self.range_start)
         return context.window_manager.invoke_props_dialog(self, width=200)
 
     def draw(self, context):
         layout = self.layout
         layout.label(text=f"{self.finger_name} Line")
-        row = layout.row(align=True)
-        row.prop(self, "range_start", text="From")
-        row.prop(self, "range_end", text="To")
+        layout.prop(self, "finger_number", expand=True)
 
     def execute(self, context):
         scene = context.scene
@@ -181,33 +190,41 @@ class INTRA10_OT_AddFingerLandmark(bpy.types.Operator):
             self.report({'WARNING'}, "Select a mesh object")
             return {'CANCELLED'}
 
-        if self.range_start > self.range_end:
-            self.report({'WARNING'}, "From must be <= To")
+        num = int(self.finger_number)
+        if num < self.range_start or num > self.range_end:
+            self.report({'WARNING'}, f"Number must be {self.range_start:02d}~{self.range_end:02d}")
             return {'CANCELLED'}
 
-        added = 0
-        for num in range(self.range_start, self.range_end + 1):
-            name = f"{self.finger_name} {num:02d} Line"
-            exists = False
-            for g in scene.intra10_landmark_groups:
-                if g.name == name and g.obj_name == obj.name:
-                    exists = True
-                    break
-            if exists:
-                continue
+        name = f"{self.finger_name} {num:02d} Line"
 
-            group = scene.intra10_landmark_groups.add()
-            group.name = name
-            group.color = self.finger_color
-            group.visible = True
-            group.obj_name = obj.name
-            added += 1
+        for g in scene.intra10_landmark_groups:
+            if g.name == name and g.obj_name == obj.name:
+                scene.intra10_landmark_active_index = list(scene.intra10_landmark_groups).index(g)
+                if context.mode == 'EDIT_MESH':
+                    count = landmark_core.mark_edges(context, name)
+                    if scene.intra10_landmark_auto_mirror:
+                        landmark_core.auto_mirror_mark(context, name)
+                    _redraw_viewports()
+                    self.report({'INFO'}, f"Marked {count} edges in '{name}'")
+                    return {'FINISHED'}
+                self.report({'WARNING'}, f"'{name}' already exists")
+                return {'CANCELLED'}
 
-        if added:
-            scene.intra10_landmark_active_index = len(scene.intra10_landmark_groups) - 1
-            self.report({'INFO'}, f"Added {added} '{self.finger_name}' landmark groups")
+        group = scene.intra10_landmark_groups.add()
+        group.name = name
+        group.color = self.finger_color
+        group.visible = True
+        group.obj_name = obj.name
+        scene.intra10_landmark_active_index = len(scene.intra10_landmark_groups) - 1
+
+        if context.mode == 'EDIT_MESH':
+            count = landmark_core.mark_edges(context, name)
+            if scene.intra10_landmark_auto_mirror:
+                landmark_core.auto_mirror_mark(context, name)
+            _redraw_viewports()
+            self.report({'INFO'}, f"Added '{name}' and marked {count} edges")
         else:
-            self.report({'WARNING'}, f"All '{self.finger_name}' groups already exist")
+            self.report({'INFO'}, f"Added '{name}'")
 
         return {'FINISHED'}
 
