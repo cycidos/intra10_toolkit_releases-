@@ -308,6 +308,32 @@ class INTRA10_OT_AddCustomLandmark(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class INTRA10_OT_UnmarkLandmark(bpy.types.Operator):
+    """Remove selected edges from the active landmark group"""
+    bl_idname = "intra10.unmark_landmark"
+    bl_label = "Unmark Landmark Edges"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'EDIT_MESH'
+
+    def execute(self, context):
+        scene = context.scene
+        idx = scene.intra10_landmark_active_index
+        groups = scene.intra10_landmark_groups
+
+        if idx < 0 or idx >= len(groups):
+            self.report({'WARNING'}, "Select a landmark group first")
+            return {'CANCELLED'}
+
+        group = groups[idx]
+        count = landmark_core.clear_edges(context, group.name)
+        _redraw_viewports()
+        self.report({'INFO'}, f"Unmarked {count} edges from '{group.name}'")
+        return {'FINISHED'}
+
+
 class INTRA10_OT_RemoveLandmarkGroup(bpy.types.Operator):
     bl_idname = "intra10.remove_landmark_group"
     bl_label = "Remove Landmark Group"
@@ -358,6 +384,16 @@ class INTRA10_OT_RemoveAllLandmarkGroups(bpy.types.Operator):
         _redraw_viewports()
         self.report({'INFO'}, "Removed all landmark groups")
         return {'FINISHED'}
+
+
+class INTRA10_MT_RemoveLandmarkMenu(bpy.types.Menu):
+    bl_idname = "INTRA10_MT_remove_landmark_menu"
+    bl_label = "Remove Landmark"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("intra10.remove_landmark_group", text="Remove Selected", icon='REMOVE')
+        layout.operator("intra10.remove_all_landmark_groups", text="Remove All", icon='TRASH')
 
 
 class INTRA10_OT_MirrorLandmarkGroup(bpy.types.Operator):
@@ -617,9 +653,11 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         col = row.column(align=True)
         if context.mode == 'EDIT_MESH':
             col.operator("intra10.mark_landmark", text="", icon='ADD')
+            col.operator("intra10.unmark_landmark", text="", icon='REMOVE')
             col.operator("intra10.select_landmark_edges", text="", icon='RESTRICT_SELECT_OFF')
-        col.operator("intra10.remove_landmark_group", text="", icon='REMOVE')
-        col.operator("intra10.remove_all_landmark_groups", text="", icon='TRASH')
+        col.operator("intra10.remove_landmark_group", text="", icon='TRASH')
+        col.context_pointer_set("scene", context.scene)
+        col.menu("INTRA10_MT_remove_landmark_menu", text="", icon='DOWNARROW_HLT')
         col.operator("intra10.mirror_landmark_group", text="", icon='MOD_MIRROR')
 
         # --- .L / .R suffix buttons ---
@@ -721,12 +759,14 @@ classes = [
     INTRA10_UL_LandmarkGroupList,
     INTRA10_OT_ToggleLandmarkDraw,
     INTRA10_OT_MarkLandmark,
+    INTRA10_OT_UnmarkLandmark,
     INTRA10_OT_SelectLandmarkEdges,
     INTRA10_OT_AddLandmarkGroup,
     INTRA10_OT_AddFingerLandmark,
     INTRA10_OT_AddCustomLandmark,
     INTRA10_OT_RemoveLandmarkGroup,
     INTRA10_OT_RemoveAllLandmarkGroups,
+    INTRA10_MT_RemoveLandmarkMenu,
     INTRA10_OT_MirrorLandmarkGroup,
     INTRA10_OT_AddLRSuffix,
     INTRA10_OT_SaveLandmarkPreset,
