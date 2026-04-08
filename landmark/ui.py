@@ -79,7 +79,7 @@ class INTRA10_OT_MarkLandmark(bpy.types.Operator):
     """Add selected edges to the active landmark group"""
     bl_idname = "intra10.mark_landmark"
     bl_label = "Mark Landmark Edges"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     @classmethod
     def poll(cls, context):
@@ -108,7 +108,7 @@ class INTRA10_OT_MarkLandmark(bpy.types.Operator):
 class INTRA10_OT_SelectLandmarkEdges(bpy.types.Operator):
     bl_idname = "intra10.select_landmark_edges"
     bl_label = "Select Landmark Edges"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     @classmethod
     def poll(cls, context):
@@ -132,7 +132,7 @@ class INTRA10_OT_SelectLandmarkEdges(bpy.types.Operator):
 class INTRA10_OT_AddLandmarkGroup(bpy.types.Operator):
     bl_idname = "intra10.add_landmark_group"
     bl_label = "Add Landmark Group"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     part_name: StringProperty(name="Part Name")
     part_color: FloatVectorProperty(
@@ -183,7 +183,7 @@ class INTRA10_OT_AddLandmarkGroup(bpy.types.Operator):
 class INTRA10_OT_AddFingerLandmark(bpy.types.Operator):
     bl_idname = "intra10.add_finger_landmark"
     bl_label = "Add Finger/Toe Landmark"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     finger_name: StringProperty(name="Finger Name")
     finger_color: FloatVectorProperty(
@@ -262,7 +262,7 @@ class INTRA10_OT_AddFingerLandmark(bpy.types.Operator):
 class INTRA10_OT_AddCustomLandmark(bpy.types.Operator):
     bl_idname = "intra10.add_custom_landmark"
     bl_label = "Add Custom Landmark"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     def execute(self, context):
         scene = context.scene
@@ -312,7 +312,7 @@ class INTRA10_OT_UnmarkLandmark(bpy.types.Operator):
     """Remove selected edges from the active landmark group"""
     bl_idname = "intra10.unmark_landmark"
     bl_label = "Unmark Landmark Edges"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     @classmethod
     def poll(cls, context):
@@ -337,7 +337,7 @@ class INTRA10_OT_UnmarkLandmark(bpy.types.Operator):
 class INTRA10_OT_RemoveLandmarkGroup(bpy.types.Operator):
     bl_idname = "intra10.remove_landmark_group"
     bl_label = "Remove Landmark Group"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     def execute(self, context):
         scene = context.scene
@@ -363,7 +363,7 @@ class INTRA10_OT_RemoveAllLandmarkGroups(bpy.types.Operator):
     """Remove all landmark groups and their edge data"""
     bl_idname = "intra10.remove_all_landmark_groups"
     bl_label = "Remove All Landmark Groups"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     def execute(self, context):
         scene = context.scene
@@ -399,7 +399,7 @@ class INTRA10_MT_RemoveLandmarkMenu(bpy.types.Menu):
 class INTRA10_OT_MirrorLandmarkGroup(bpy.types.Operator):
     bl_idname = "intra10.mirror_landmark_group"
     bl_label = "Mirror Landmark Group"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     def execute(self, context):
         scene = context.scene
@@ -443,7 +443,7 @@ class INTRA10_OT_MirrorLandmarkGroup(bpy.types.Operator):
 class INTRA10_OT_AddLRSuffix(bpy.types.Operator):
     bl_idname = "intra10.add_lr_suffix"
     bl_label = "Add .L/.R Suffix"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     suffix: StringProperty(name="Suffix", default=".L")
 
@@ -502,7 +502,7 @@ class INTRA10_OT_AddLRSuffix(bpy.types.Operator):
 class INTRA10_OT_SaveLandmarkPreset(bpy.types.Operator):
     bl_idname = "intra10.save_landmark_preset"
     bl_label = "Save Landmark Preset"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     preset_name: StringProperty(name="Preset Name", default="")
 
@@ -547,7 +547,7 @@ class INTRA10_OT_SaveLandmarkPreset(bpy.types.Operator):
 class INTRA10_OT_LoadLandmarkPreset(bpy.types.Operator):
     bl_idname = "intra10.load_landmark_preset"
     bl_label = "Load Landmark Preset"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER'}
 
     preset_file: EnumProperty(
         name="Preset",

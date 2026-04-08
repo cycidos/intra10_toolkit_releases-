@@ -2,7 +2,7 @@ schema_version = "1.0.0"
 
 id = "intra10_toolkit"
 name = "Intra10 ToolKit"
-version = "0.1.14"
+version = "0.1.15"
 tagline = "Collection of tools for Blender workflow"
 maintainer = "kimhwan"
 
