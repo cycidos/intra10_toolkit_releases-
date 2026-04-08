@@ -272,33 +272,30 @@ class INTRA10_OT_RemoveLandmarkGroup(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class INTRA10_OT_ClearLandmarkEdges(bpy.types.Operator):
-    """Clear all edges from selected landmark group (keep group in list)"""
-    bl_idname = "intra10.clear_landmark_edges"
-    bl_label = "Clear Landmark Edges"
+class INTRA10_OT_RemoveAllLandmarkGroups(bpy.types.Operator):
+    """Remove all landmark groups and their edge data"""
+    bl_idname = "intra10.remove_all_landmark_groups"
+    bl_label = "Remove All Landmark Groups"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         scene = context.scene
         obj = context.active_object
-        if not obj or obj.type != 'MESH':
-            self.report({'WARNING'}, "Select a mesh object")
-            return {'CANCELLED'}
-
-        idx = scene.intra10_landmark_active_index
         groups = scene.intra10_landmark_groups
-        if idx < 0 or idx >= len(groups):
-            self.report({'WARNING'}, "No group selected")
+
+        if len(groups) == 0:
+            self.report({'WARNING'}, "No groups to remove")
             return {'CANCELLED'}
 
-        group = groups[idx]
-        if obj.name != group.obj_name:
-            self.report({'WARNING'}, "Active object doesn't match group")
-            return {'CANCELLED'}
+        if obj and obj.type == 'MESH':
+            for g in groups:
+                if g.obj_name == obj.name:
+                    landmark_core.remove_attribute(obj, g.name)
 
-        landmark_core.remove_attribute(obj, group.name)
+        groups.clear()
+        scene.intra10_landmark_active_index = 0
         _redraw_viewports()
-        self.report({'INFO'}, f"Cleared all edges from '{group.name}'")
+        self.report({'INFO'}, "Removed all landmark groups")
         return {'FINISHED'}
 
 
@@ -558,7 +555,7 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
 
         col = row.column(align=True)
         col.operator("intra10.remove_landmark_group", text="", icon='REMOVE')
-        col.operator("intra10.clear_landmark_edges", text="", icon='TRASH')
+        col.operator("intra10.remove_all_landmark_groups", text="", icon='TRASH')
         if context.mode == 'EDIT_MESH':
             col.operator("intra10.select_landmark_edges", text="", icon='RESTRICT_SELECT_OFF')
         col.operator("intra10.mirror_landmark_group", text="", icon='MOD_MIRROR')
@@ -666,7 +663,7 @@ classes = [
     INTRA10_OT_AddFingerLandmark,
     INTRA10_OT_AddCustomLandmark,
     INTRA10_OT_RemoveLandmarkGroup,
-    INTRA10_OT_ClearLandmarkEdges,
+    INTRA10_OT_RemoveAllLandmarkGroups,
     INTRA10_OT_MirrorLandmarkGroup,
     INTRA10_OT_AddLRSuffix,
     INTRA10_OT_SaveLandmarkPreset,
