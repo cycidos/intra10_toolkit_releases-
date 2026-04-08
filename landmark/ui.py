@@ -264,6 +264,17 @@ class INTRA10_OT_AddCustomLandmark(bpy.types.Operator):
     bl_label = "Add Custom Landmark"
     bl_options = {'REGISTER'}
 
+    def _unique_name(self, base, obj_name, groups):
+        existing = {g.name for g in groups if g.obj_name == obj_name}
+        if base not in existing:
+            return base
+        idx = 1
+        while True:
+            candidate = f"{base}_{idx:03d}"
+            if candidate not in existing:
+                return candidate
+            idx += 1
+
     def execute(self, context):
         scene = context.scene
         obj = context.active_object
@@ -271,23 +282,12 @@ class INTRA10_OT_AddCustomLandmark(bpy.types.Operator):
             self.report({'WARNING'}, "Select a mesh object")
             return {'CANCELLED'}
 
-        name = scene.intra10_landmark_custom_name.strip()
-        if not name:
+        base_name = scene.intra10_landmark_custom_name.strip()
+        if not base_name:
             self.report({'WARNING'}, "Enter a landmark name")
             return {'CANCELLED'}
 
-        for g in scene.intra10_landmark_groups:
-            if g.name == name and g.obj_name == obj.name:
-                scene.intra10_landmark_active_index = list(scene.intra10_landmark_groups).index(g)
-                if context.mode == 'EDIT_MESH':
-                    count = landmark_core.mark_edges(context, name)
-                    if scene.intra10_landmark_auto_mirror:
-                        landmark_core.auto_mirror_mark(context, name)
-                    _redraw_viewports()
-                    self.report({'INFO'}, f"Marked {count} edges in '{name}'")
-                    return {'FINISHED'}
-                self.report({'WARNING'}, f"'{name}' already exists")
-                return {'CANCELLED'}
+        name = self._unique_name(base_name, obj.name, scene.intra10_landmark_groups)
 
         group = scene.intra10_landmark_groups.add()
         group.name = name
