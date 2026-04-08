@@ -705,15 +705,15 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
             col.operator("intra10.mark_landmark", text="", icon='ADD')
             col.operator("intra10.unmark_landmark", text="", icon='REMOVE')
             col.operator("intra10.select_landmark_edges", text="", icon='RESTRICT_SELECT_OFF')
-        col.operator("intra10.remove_landmark_group", text="", icon='TRASH')
-        col.context_pointer_set("scene", context.scene)
-        col.menu("INTRA10_MT_remove_landmark_menu", text="", icon='DOWNARROW_HLT')
         col.operator("intra10.mirror_landmark_group", text="", icon='MOD_MIRROR')
         col.separator()
         op_up = col.operator("intra10.move_landmark_group", text="", icon='TRIA_UP')
         op_up.direction = 'UP'
         op_down = col.operator("intra10.move_landmark_group", text="", icon='TRIA_DOWN')
         op_down.direction = 'DOWN'
+        col.separator()
+        col.operator("intra10.remove_landmark_group", text="", icon='TRASH')
+        col.menu("INTRA10_MT_remove_landmark_menu", text="", icon='DOWNARROW_HLT')
 
         # --- .L / .R suffix buttons ---
         row_lr = layout.row(align=True)
