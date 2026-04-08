@@ -499,9 +499,38 @@ class INTRA10_OT_AddLRSuffix(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class INTRA10_OT_MoveLandmarkGroup(bpy.types.Operator):
+    """Move the active landmark group up or down in the list"""
+    bl_idname = "intra10.move_landmark_group"
+    bl_label = "Move Landmark Group"
+    bl_options = {'REGISTER'}
+
+    direction: EnumProperty(
+        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        default='UP',
+    )
+
+    def execute(self, context):
+        scene = context.scene
+        groups = scene.intra10_landmark_groups
+        idx = scene.intra10_landmark_active_index
+
+        if idx < 0 or idx >= len(groups):
+            return {'CANCELLED'}
+
+        if self.direction == 'UP' and idx > 0:
+            groups.move(idx, idx - 1)
+            scene.intra10_landmark_active_index = idx - 1
+        elif self.direction == 'DOWN' and idx < len(groups) - 1:
+            groups.move(idx, idx + 1)
+            scene.intra10_landmark_active_index = idx + 1
+
+        return {'FINISHED'}
+
+
 class INTRA10_OT_SaveLandmarkPreset(bpy.types.Operator):
     bl_idname = "intra10.save_landmark_preset"
-    bl_label = "Save Landmark Preset"
+    bl_label = "Save Landmark"
     bl_options = {'REGISTER'}
 
     preset_name: StringProperty(name="Preset Name", default="")
@@ -546,7 +575,7 @@ class INTRA10_OT_SaveLandmarkPreset(bpy.types.Operator):
 
 class INTRA10_OT_LoadLandmarkPreset(bpy.types.Operator):
     bl_idname = "intra10.load_landmark_preset"
-    bl_label = "Load Landmark Preset"
+    bl_label = "Load Landmark"
     bl_options = {'REGISTER'}
 
     preset_file: EnumProperty(
@@ -605,6 +634,19 @@ class INTRA10_OT_LoadLandmarkPreset(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class INTRA10_OT_OpenPresetFolder(bpy.types.Operator):
+    """Open the preset folder in file explorer"""
+    bl_idname = "intra10.open_preset_folder"
+    bl_label = "Open Preset Folder"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        import subprocess
+        os.makedirs(PRESET_DIR, exist_ok=True)
+        subprocess.Popen(['explorer', PRESET_DIR])
+        return {'FINISHED'}
+
+
 # ======================================================================
 # Panel
 # ======================================================================
@@ -641,6 +683,14 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
             layout.label(text="Select a Mesh Object", icon='ERROR')
             return
 
+        # --- Save / Load Landmark ---
+        row = layout.row(align=True)
+        row.operator("intra10.save_landmark_preset", text="Save Landmark", icon='EXPORT')
+        row.operator("intra10.load_landmark_preset", text="Load Landmark", icon='IMPORT')
+        row.operator("intra10.open_preset_folder", text="", icon='FILE_FOLDER')
+
+        layout.separator()
+
         # --- Landmark Group List ---
         row = layout.row()
         row.template_list(
@@ -659,6 +709,11 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         col.context_pointer_set("scene", context.scene)
         col.menu("INTRA10_MT_remove_landmark_menu", text="", icon='DOWNARROW_HLT')
         col.operator("intra10.mirror_landmark_group", text="", icon='MOD_MIRROR')
+        col.separator()
+        op_up = col.operator("intra10.move_landmark_group", text="", icon='TRIA_UP')
+        op_up.direction = 'UP'
+        op_down = col.operator("intra10.move_landmark_group", text="", icon='TRIA_DOWN')
+        op_down.direction = 'DOWN'
 
         # --- .L / .R suffix buttons ---
         row_lr = layout.row(align=True)
@@ -734,22 +789,6 @@ class INTRA10_PT_LandmarksBody(bpy.types.Panel):
             op.range_end = rend
 
 
-class INTRA10_PT_LandmarksPreset(bpy.types.Panel):
-    bl_label = "Preset"
-    bl_idname = "INTRA10_PT_landmarks_preset"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "Intra10 ToolKit"
-    bl_parent_id = "INTRA10_PT_landmarks"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        layout = self.layout
-        row = layout.row(align=True)
-        row.operator("intra10.save_landmark_preset", text="Save Preset", icon='EXPORT')
-        row.operator("intra10.load_landmark_preset", text="Load Preset", icon='IMPORT')
-
-
 # ======================================================================
 # Registration
 # ======================================================================
@@ -769,12 +808,13 @@ classes = [
     INTRA10_MT_RemoveLandmarkMenu,
     INTRA10_OT_MirrorLandmarkGroup,
     INTRA10_OT_AddLRSuffix,
+    INTRA10_OT_MoveLandmarkGroup,
     INTRA10_OT_SaveLandmarkPreset,
     INTRA10_OT_LoadLandmarkPreset,
+    INTRA10_OT_OpenPresetFolder,
     INTRA10_PT_Landmarks,
     INTRA10_PT_LandmarksFacial,
     INTRA10_PT_LandmarksBody,
-    INTRA10_PT_LandmarksPreset,
 ]
 
 
