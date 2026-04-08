@@ -75,6 +75,36 @@ class INTRA10_OT_ToggleLandmarkDraw(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class INTRA10_OT_MarkLandmark(bpy.types.Operator):
+    """Add selected edges to the active landmark group"""
+    bl_idname = "intra10.mark_landmark"
+    bl_label = "Mark Landmark Edges"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'EDIT_MESH'
+
+    def execute(self, context):
+        scene = context.scene
+        idx = scene.intra10_landmark_active_index
+        groups = scene.intra10_landmark_groups
+
+        if idx < 0 or idx >= len(groups):
+            self.report({'WARNING'}, "Select a landmark group first")
+            return {'CANCELLED'}
+
+        group = groups[idx]
+        count = landmark_core.mark_edges(context, group.name)
+
+        if scene.intra10_landmark_auto_mirror:
+            landmark_core.auto_mirror_mark(context, group.name)
+
+        _redraw_viewports()
+        self.report({'INFO'}, f"Marked {count} edges in '{group.name}'")
+        return {'FINISHED'}
+
+
 class INTRA10_OT_SelectLandmarkEdges(bpy.types.Operator):
     bl_idname = "intra10.select_landmark_edges"
     bl_label = "Select Landmark Edges"
@@ -585,10 +615,11 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         )
 
         col = row.column(align=True)
+        if context.mode == 'EDIT_MESH':
+            col.operator("intra10.mark_landmark", text="", icon='ADD')
+            col.operator("intra10.select_landmark_edges", text="", icon='RESTRICT_SELECT_OFF')
         col.operator("intra10.remove_landmark_group", text="", icon='REMOVE')
         col.operator("intra10.remove_all_landmark_groups", text="", icon='TRASH')
-        if context.mode == 'EDIT_MESH':
-            col.operator("intra10.select_landmark_edges", text="", icon='RESTRICT_SELECT_OFF')
         col.operator("intra10.mirror_landmark_group", text="", icon='MOD_MIRROR')
 
         # --- .L / .R suffix buttons ---
@@ -689,6 +720,7 @@ classes = [
     INTRA10_PG_LandmarkGroup,
     INTRA10_UL_LandmarkGroupList,
     INTRA10_OT_ToggleLandmarkDraw,
+    INTRA10_OT_MarkLandmark,
     INTRA10_OT_SelectLandmarkEdges,
     INTRA10_OT_AddLandmarkGroup,
     INTRA10_OT_AddFingerLandmark,
