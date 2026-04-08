@@ -161,14 +161,28 @@ class INTRA10_OT_AddFingerLandmark(bpy.types.Operator):
         size=4, min=0.0, max=1.0,
         default=(1.0, 0.5, 0.2, 1.0),
     )
-    range_start: IntProperty(name="Start", default=0, min=0, max=3)
-    range_end: IntProperty(name="End", default=3, min=0, max=3)
+    range_start: IntProperty(name="From", default=0, min=0, max=3)
+    range_end: IntProperty(name="To", default=3, min=0, max=3)
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=200)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text=f"{self.finger_name} Line")
+        row = layout.row(align=True)
+        row.prop(self, "range_start", text="From")
+        row.prop(self, "range_end", text="To")
 
     def execute(self, context):
         scene = context.scene
         obj = context.active_object
         if not obj or obj.type != 'MESH':
             self.report({'WARNING'}, "Select a mesh object")
+            return {'CANCELLED'}
+
+        if self.range_start > self.range_end:
+            self.report({'WARNING'}, "From must be <= To")
             return {'CANCELLED'}
 
         added = 0
