@@ -70,3 +70,41 @@ def load_preset(filepath, obj, scene):
         loaded += 1
 
     return True, f"Loaded {loaded} landmark groups"
+
+
+POINTS_VERSION = 1
+
+
+def export_landmark_points(filepath, obj, scene):
+    if not obj or obj.type != 'MESH':
+        return False, "No mesh object selected"
+
+    points = []
+    for group in scene.intra10_landmark_groups:
+        if group.obj_name != obj.name:
+            continue
+        centroid = landmark_core.get_group_centroid(obj, group.name)
+        if centroid is None:
+            continue
+        edge_count = len(landmark_core.get_marked_edge_indices(obj, group.name))
+        points.append({
+            "name": group.name,
+            "position": [round(centroid.x, 6), round(centroid.y, 6), round(centroid.z, 6)],
+            "color": list(group.color),
+            "edge_count": edge_count,
+        })
+
+    if not points:
+        return False, "No landmark points to export"
+
+    data = {
+        "version": POINTS_VERSION,
+        "object": obj.name,
+        "vertex_count": len(obj.data.vertices),
+        "landmark_points": points,
+    }
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    return True, f"Exported {len(points)} landmark points"
