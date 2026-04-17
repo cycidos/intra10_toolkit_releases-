@@ -647,6 +647,49 @@ class INTRA10_OT_OpenPresetFolder(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class INTRA10_OT_ExportLandmarkPoints(bpy.types.Operator):
+    """Export landmark group centroids as JSON"""
+    bl_idname = "intra10.export_landmark_points"
+    bl_label = "Export Landmark Points"
+    bl_options = {'REGISTER'}
+
+    filepath: StringProperty(subtype='FILE_PATH')
+    filter_glob: StringProperty(default="*.json", options={'HIDDEN'})
+
+    def invoke(self, context, event):
+        obj = context.active_object
+        if obj:
+            self.filepath = f"{obj.name}_landmark_points.json"
+        else:
+            self.filepath = "landmark_points.json"
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if not obj or obj.type != 'MESH':
+            self.report({'WARNING'}, "Select a mesh object")
+            return {'CANCELLED'}
+
+        was_edit = (obj.mode == 'EDIT')
+        if was_edit:
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        success, msg = landmark_presets.export_landmark_points(
+            self.filepath, obj, context.scene,
+        )
+
+        if was_edit:
+            bpy.ops.object.mode_set(mode='EDIT')
+
+        if success:
+            self.report({'INFO'}, msg)
+        else:
+            self.report({'WARNING'}, msg)
+            return {'CANCELLED'}
+        return {'FINISHED'}
+
+
 # ======================================================================
 # Panel
 # ======================================================================
@@ -688,6 +731,9 @@ class INTRA10_PT_Landmarks(bpy.types.Panel):
         row.operator("intra10.save_landmark_preset", text="Save Landmark", icon='EXPORT')
         row.operator("intra10.load_landmark_preset", text="Load Landmark", icon='IMPORT')
         row.operator("intra10.open_preset_folder", text="", icon='FILE_FOLDER')
+
+        row = layout.row(align=True)
+        row.operator("intra10.export_landmark_points", text="Export Points", icon='POINTCLOUD_DATA')
 
         layout.separator()
 
@@ -812,6 +858,7 @@ classes = [
     INTRA10_OT_SaveLandmarkPreset,
     INTRA10_OT_LoadLandmarkPreset,
     INTRA10_OT_OpenPresetFolder,
+    INTRA10_OT_ExportLandmarkPoints,
     INTRA10_PT_Landmarks,
     INTRA10_PT_LandmarksFacial,
     INTRA10_PT_LandmarksBody,

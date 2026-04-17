@@ -93,6 +93,50 @@ def get_marked_edge_indices(obj, group_name):
     return [i for i, d in enumerate(attr.data) if d.value == 1]
 
 
+def get_group_centroid(obj, group_name):
+    """Return the world-space centroid of all marked edge midpoints, or None."""
+    if not obj or obj.type != 'MESH':
+        return None
+
+    from mathutils import Vector
+
+    me = obj.data
+    mat = obj.matrix_world
+    aname = attr_name(group_name)
+    accum = Vector((0.0, 0.0, 0.0))
+    count = 0
+
+    if obj.mode == 'EDIT':
+        bm = bmesh.from_edit_mesh(me)
+        layer = bm.edges.layers.int.get(aname)
+        if not layer:
+            return None
+        for e in bm.edges:
+            if e[layer] == 1:
+                mid = (e.verts[0].co + e.verts[1].co) * 0.5
+                accum += mat @ mid
+                count += 1
+    else:
+        if aname not in me.attributes:
+            return None
+        attr = me.attributes[aname]
+        edges = me.edges
+        verts = me.vertices
+        n_edges = len(edges)
+        for i, d in enumerate(attr.data):
+            if d.value == 1 and i < n_edges:
+                e = edges[i]
+                v0 = verts[e.vertices[0]].co
+                v1 = verts[e.vertices[1]].co
+                mid = (v0 + v1) * 0.5
+                accum += mat @ mid
+                count += 1
+
+    if count == 0:
+        return None
+    return accum / count
+
+
 def set_marked_edge_indices(obj, group_name, indices):
     if not obj or obj.type != 'MESH':
         return
