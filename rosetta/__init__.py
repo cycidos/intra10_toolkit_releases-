@@ -8,6 +8,11 @@ def _find_rosetta_root():
         return env
     _addon_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     candidates = [
+        # Standard deploy roots — must come first so a regular employee
+        # machine (no working tree) still resolves the rosetta UI.
+        r"C:\server\extensions\rosetta",
+        r"H:\공유 드라이브\extensions\rosetta",
+        # Developer worktrees
         os.path.normpath(os.path.join(_addon_dir, "..", "..", "..", "other", "rosetta")),
         os.path.normpath(os.path.join(os.path.expanduser("~"), "Documents", "setting", "other", "rosetta")),
     ]

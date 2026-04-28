@@ -40,6 +40,12 @@ _ROSETTA_MODULE_NAMES = (
     "collision_resolver", "garment_layer",
     "part_aware_rbf", "body_part_segmentation",
     "license",
+    # Added in 2026-04-28 Rosetta dev cycle (Stage 7~10 / UX P0):
+    "heatmap",            # wrappers/common/heatmap.py
+    "region_labels",      # wrappers/common/region_labels.py
+    "skin_weight_utils",  # wrappers/common/skin_weight_utils.py
+    "dep_installer",      # wrappers/common/dep_installer.py
+    "np_neighbors",       # wrappers/common/np_neighbors.py
 )
 
 
